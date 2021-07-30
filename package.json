@@ -1,0 +1,23 @@
+{
+  "name": "projeto_funcional",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arthurcommodore/jsFuncional.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/arthurcommodore/jsFuncional/issues"
+  },
+  "homepage": "https://github.com/arthurcommodore/jsFuncional#readme",
+  "dependencies": {
+    "rxjs": "^7.3.0"
+  }
+}
