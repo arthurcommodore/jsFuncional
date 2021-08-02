@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/arthurcommodore/jsFuncional#readme",
   "dependencies": {
+    "lodash": "^4.17.21",
     "rxjs": "^7.3.0"
   }
 }

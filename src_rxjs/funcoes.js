@@ -2,6 +2,19 @@ const fs = require('fs')
 const path = require('path')
 const {Observable} = require('rxjs')
 
+function createPipeableOperator(operatorFn) {
+    return function(source) {
+        return Observable.create(subscriber => {
+            const sub = operatorFn(subscriber)
+            source.subscribe({
+                next: sub.next,
+                error: sub.erro || (e => subscriber.error(e)),
+                complete: sub.erro || (e => subscriber.complete(e))
+            })
+        })
+    }
+}
+
 function composicao(...fns) {
     return function(valor) {
         return fns.reduce(async (acc, fn) => {
@@ -16,7 +29,7 @@ function composicao(...fns) {
 
 function lerDiretorio(caminho) {
     return new Observable(subscriber => {
-        try {
+        try{
             fs.readdirSync(caminho).forEach(arquivo => {
                 subscriber.next(path.join(caminho, arquivo))
             })
@@ -33,45 +46,75 @@ function extensaoArquivo(padrao) {
     }
 }
 
-function lerArquivo(caminho) {
-    return new Promise((resolve, reject) => {
-        try {
-            let conteudo = fs.readFileSync(caminho, {encoding: 'utf-8'})
-            resolve(conteudo.toString())
-        }catch(e) {
-            reject(e)
+function lerArquivos(caminho) {
+    return createPipeableOperator(subscriber => ({
+        next(caminho) {
+            try {
+                let conteudo = fs.readFileSync(caminho, {encoding: 'utf-8'})
+                subscriber.next((conteudo.toString()))
+            }catch(e) {
+                subscriber.erro(e)
+            }
         }
-    })
+    }))
 }
 
-function lerArquivos(caminhos) {
-    return Promise.all(caminhos.map(caminho => lerArquivo(caminho)))
+function separarTextoPor(simbolo) {
+    return createPipeableOperator(subscriber => ({
+        next(texto) {
+            try {
+                texto.split(simbolo).forEach(elem => subscriber.next(elem))
+
+            }catch(e) {
+                subscriber.erro(e)
+            }
+        }
+    }))
 }
 
-function removerVazio(conteudo) {
-    return conteudo.filter(linha => linha.trim())
+function removerVazio() {
+    return createPipeableOperator(subscriber => ({
+        next(texto) {
+            if(texto.trim()) 
+                subscriber.next(texto)
+        }
+    }))
 }
 
-function removeTime(conteudo) {
-    return conteudo.filter(el => !el.includes('-->'))
+function elementosTerminadosCom(padraoTextual) {
+    return createPipeableOperator(subscriber => ({
+        next(texto) {
+            if(texto.endsWith(padraoTextual)) {
+                subscriber.next(texto)
+            }
+        }
+    }))
 }
 
 function tirarSimbolos(simbolos) {
-    return function(array) {
-        return array.map(elem => {
-            return simbolos.reduce((acc, simbolo) => acc.split(simbolo).join(''), elem)
-        })
-    }
+    return createPipeableOperator(subscriber => ({
+        next(texto) {
+            simbolos.forEach(elem => {
+                texto = texto.split(elem).join('')
+            })
+            subscriber.next(texto)
+        }
+    }))
 }
 
-
-function agruparElementos(palavras) {
-    return Object.values(palavras.reduce((acc, palavra) => {
-        const el = palavra.toLowerCase()
-        const qtd = acc[el] ? acc[el].qtd + 1 : 1
-        acc[el] = {elemento: el, qtd}
-        return acc
-    }, {}))
+function agruparElementos() {
+    return createPipeableOperator(subscriber => ({
+        next(palavras) {
+            const agrupado = Object.values(
+                palavras.reduce((acc, palavra) => {
+                    const el = palavra.toLowerCase()
+                    const qtd = acc[el] ? acc[el].qtd + 1 : 1
+                    acc[el] = {elemento : el, qtd}
+                    return acc
+                }, {}))
+            subscriber.next(agrupado)
+        }
+    }))
 }
 
 function ordenarQtd(attr, ordem = `asc`) {
@@ -83,11 +126,13 @@ function ordenarQtd(attr, ordem = `asc`) {
     }
 }
 
-function removeOnlyNumbers(array) {
-    return array.filter(el => {
-        const num = parseInt(el.trim())
-        return num !== num
-    })
+function removeOnlyNumbers() {
+    return createPipeableOperator(subscriber => ({
+        next(texto) {
+            if(parseInt(texto.trim()) !== parseInt(texto.trim()))
+                subscriber.next(texto)
+        }
+    }))
 }
 
 
@@ -96,10 +141,11 @@ module.exports = {
     extensaoArquivo, 
     lerArquivos, 
     removerVazio, 
-    removeTime,
+    elementosTerminadosCom,
     tirarSimbolos,
     agruparElementos,
     ordenarQtd,
     composicao,
-    removeOnlyNumbers
+    removeOnlyNumbers,
+    separarTextoPor
 }
